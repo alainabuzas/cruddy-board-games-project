@@ -5,8 +5,18 @@ var path = require('path');
 var fs = require('fs');
 var ejsLayouts = require("express-ejs-layouts");
 var bodyParser = require('body-parser');
+var pgp = require('pg-promise')();
 
 var app = express();
+var cn = {
+    host: 'localhost',
+    port: 3000,
+    database: 'mygames',
+    user: 'alainabuzas',
+    password: 'hustleharder'
+};
+
+var db = pgp(cn);
 
 // this sets a static directory for the views
 app.use(express.static(path.join(__dirname, 'static')));
@@ -19,9 +29,93 @@ app.set('view engine', 'ejs');
 
 // your routes here
 
+app.get('/', function(req, res) {
+    res.redirect('/games');
+});
+
+app.get('/games', function(req, res) {
+    var games = getGames();
+    res.render('games-index', { games: games });
+});
+
+app.get('/games/new', function(req, res) {
+    res.render('games-new');
+});
+
+app.post('/games', function(req, res) {
+    console.log(req.body);
+
+    var newGame = req.body;
+    var games = getGames();
+
+    games.push(newGame);
+    saveGames(games);
+
+    res.redirect('/games');
+});
+
+app.get('/game/:name', function(req, res) {
+    var nameOfTheGame = req.params.name;
+    var games = getGames();
+    var game = getGame(games, nameOfTheGame);
+
+    res.render('game-show', game);
+});
+
+app.get('/game/:name/edit', function(req, res) {
+    var nameOfTheGame = req.params.name;
+    var games = getGames();
+    var game = getGame(games, nameOfTheGame);
+
+    res.render('games-edit', game);
+});
+
+app.put('/game/:name', function(req, res) {
+    var theNewGameData = req.body;
+
+    var nameOfTheGame = req.params.name;
+    var games = getGames();
+    var game = getGame(games, nameOfTheGame)
+
+    game.name = theNewGameData.name;
+    game.description = theNewGameData.description;
+
+    saveGames(games);
+
+    res.send(req.body);
+
+});
+
+app.delete('/game/:name', function(req, res) {
+    var nameOfTheGame = req.params.name;
+    var games = getGames();
+    var game = getGame(games, nameOfTheGame);
+    var indexOfGameToDelete = games.indexOf(game);
+
+    games.splice(indexOfGameToDelete, 1);
+
+    saveGames(games);
+
+    res.send(game);
+});
+
+
 // ...
 
 // helper functions
+
+function getGame(games, nameOfTheGame) {
+    var game = null;
+
+    for (var i = 0; i < games.length; i++) {
+
+        if (games[i].name.toLowerCase() === nameOfTheGame.toLowerCase()) {
+            game = games[i];
+            break;
+        }
+    }
+    return game;
+}
 
 // Read list of games from file.
 function getGames() {
@@ -29,6 +123,14 @@ function getGames() {
     var games = JSON.parse(fileContents);
     return games;
 }
+
+db.any('SELECT * FROM mygames WHERE active = $1', [true])
+    .then(data => {
+        console.log('DATA:', data);
+    })
+    .catch(error => {
+        console.log('ERROR', error);
+    });
 
 // Write list of games to file.
 function saveGames(games) {

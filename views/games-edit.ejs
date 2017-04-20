@@ -1,0 +1,11 @@
+<h2>Edit Game</h2>
+
+<form id="edit-game" action="<%='/game/' + name %>" method="PUT">
+	<label for="name">Name</label>
+	<input name="name" type="text" value="<%= name %>">
+
+	<label for="description">Description</label>
+	<textarea name="description" cols="30" rows="10"value="<% description %>"></textarea>
+
+	<input type="submit" value="Send">
+</form>
